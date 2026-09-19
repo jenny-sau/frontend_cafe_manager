@@ -9,51 +9,62 @@ const state = {
     },
     inventory: [],
     player: {
-        name: "Vic",
-        money: 1000,
-        level: 1,
-        inventory: []
+
         }
  
 };
 
+let token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo1LCJleHAiOjE3ODk4ODMwMzZ9.7lMHZ9g6so3crPezuPnZMMVuBK_RwkwW4DV6IdS8-k8"
+
 async function loadProducts() {
     const response = await fetch("http://127.0.0.1:8000/menu",{
-                            headers: {Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo1LCJleHAiOjE3ODk1MzE1Mjh9.wE6pVVyauGy98ttdpNvyFDEHcQQuo7XQKnooPFx5tmk"}
+                            headers: {Authorization: "Bearer " + token }
                        });
 
     if (!response.ok) {
     throw new Error("Erreur API")};
-
     const products = await response.json();
-
     return products
 }
 
 async function loadPlayer(){
     const response = await fetch("http://127.0.0.1:8000/game/stats", {
-                            headers: {Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo1LCJleHAiOjE3ODk1MzE1Mjh9.wE6pVVyauGy98ttdpNvyFDEHcQQuo7XQKnooPFx5tmk"}
+                            headers: {Authorization: "Bearer " + token }
                        });
     if (!response.ok) {
     throw new Error("Erreur API")};
-
     const player = await response.json();
-
     return player
 }
 
+async function loadInventory(){
+    const response = await fetch("http://127.0.0.1:8000/inventory", {
+                        headers: {Authorization: "Bearer " + token }
+                        });
+    if (!response.ok) {
+    throw new Error("Erreur API")};
+
+    const inventory = await response.json();
+    return inventory
+    
+}
      
 async function initShop() {
     console.log("1 - initShop");
     const product = await loadProducts();
+    const inventory = await loadInventory();
+    console.log("INVENTAIRE REçU :", inventory)
+
     console.log("2 - produits reçus :", product);
     console.log("TYPE :", typeof product);
     console.log("EST UN TABLEAU :", Array.isArray(product));
     state.shop.catalogue = product.items;
-    state.inventory = state.shop.catalogue.map(item => ({
-        name: item.name,
-        quantity: 0
-    }));
+    
+    state.inventory = inventory.items.map(inv => ({
+        name: inv.product_name,
+        quantity: inv.quantity
+    }))
+  
     console.log(product);
     console.log("PRODUIT COMPLET :", product);
     render();
@@ -62,6 +73,8 @@ async function initPlayer(){
     const player = await loadPlayer();
     state.player = player.player;
     console.log("PLAYER REÇU :", player);
+    console.log("STATE PLAYER :", state.player);
+    console.log("MONEY :", state.player.current_money);
     render()
 }
 
@@ -142,48 +155,63 @@ function getInventoryProduct(productName){
 }
 
 
-function buyProduct(productName){
+async function buyProduct(productName){
     const product = getCatalogueProduct(productName);
     const inventoryProduct = getInventoryProduct(productName);
 
-
-
-    if (product){
-        if (state.player.current_money >= product.purchase_price) {
-            state.player.current_money -= product.purchase_price;
-            inventoryProduct.quantity += 1;
-            render();
-        } else {
-        alert("Pas assez d'argent")
+        const data = {
+        menu_item_id: product.id,
+        quantity: 1
     }
-    }else {
-        alert("Le produit n'existe pas au catalogue")
-    }
-}
-
-function sellProduct(productName){
-    const product = getCatalogueProduct(productName);
-    const inventoryProduct = getInventoryProduct(productName);
-    if (product && inventoryProduct && inventoryProduct.quantity > 0) {
-        state.player.current_money += product.selling_price ;
-        inventoryProduct.quantity -= 1;
-        render();
-    } else {
-        alert("Produit pas en stock")
-    }
-}
+    console.log(data)
 
 
-async function getProducts() {
-    const response = await fetch("http://127.0.0.1:8000/menu");
+    const response = await fetch("http://127.0.0.1:8000/order/restock", {
+        method: "POST",
 
-
-    console.log(response);
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+    },
+        body: JSON.stringify(data)
+        });
+        
+    if (!response.ok) {
     console.log(response.status);
-    console.log(response.ok);
-    const data = await response.json();
-    console.log(data);
+    throw new Error("Erreur API");
+}
+const result = await response.json();
+console.log("RÉPONSE DU POST :", result);
+initShop()
+render()
+
 }
 
-//getProducts();
+async function sellProduct(productName){
+    const product = getCatalogueProduct(productName);
+    const inventoryProduct = getInventoryProduct(productName);
 
+    const data = {
+        menu_item_id: product.id,
+        quantity: 1
+    }
+
+    const response = await fetch("http://127.0.0.1:8000/order/client", {
+        method: "POST",
+
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+    },
+        body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+        console.log(response.status);
+        throw new Error("Erreur API");
+        }
+
+    initShop()
+    render()
+
+}

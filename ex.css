@@ -1,0 +1,28 @@
+body {
+    background-color: #d3bf9f62;
+}
+
+.machineContainer {
+    background-color: red;
+    position: relative;
+    width: 150px;
+    height: 150px;
+}
+
+.coffee-button {
+    position: absolute;
+    left: 50%;
+    top: 48%;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+}
+
+.coffee-button:hover {
+    transform: translate(-50%, -50%) scale(1.1);
+}
+
+.coffee_ready{
+    position: absolute;
+    left: 30%;
+    bottom: -48%;
+}
